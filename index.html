@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Hourly Weather Forecast</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      color: white;
+      min-height: 100vh;
+      padding: 25px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 20px;
+    }
+
+    h1 {
+      font-size: 30px;
+    }
+
+    .location {
+      color: #cbd5e1;
+      margin-top: 6px;
+    }
+
+    .search {
+      display: flex;
+      gap: 8px;
+    }
+
+    input {
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      outline: none;
+    }
+
+    button {
+      border: none;
+      background: #38bdf8;
+      color: #082f49;
+      font-weight: bold;
+      padding: 12px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .current {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 22px;
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+
+    .current-temp {
+      font-size: 58px;
+      font-weight: bold;
+    }
+
+    .current-info {
+      color: #cbd5e1;
+      margin-top: 5px;
+    }
+
+    .section-title {
+      margin-bottom: 15px;
+      font-size: 22px;
+    }
+
+    .hourly-wrapper {
+      overflow-x: auto;
+      padding-bottom: 15px;
+    }
+
+    .hourly {
+      display: flex;
+      gap: 12px;
+      min-width: max-content;
+    }
+
+    .hour {
+      width: 125px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 18px 12px;
+      text-align: center;
+      transition: 0.2s;
+    }
+
+    .hour:hover {
+      transform: translateY(-5px);
+      background: rgba(255,255,255,0.2);
+    }
+
+    .hour.now {
+      background: #38bdf8;
+      color: #082f49;
+    }
+
+    .time {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .icon {
+      font-size: 32px;
+      margin: 12px 0;
+    }
+
+    .temp {
+      font-size: 23px;
+      font-weight: bold;
+    }
+
+    .rain {
+      color: #bae6fd;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .wind {
+      color: #cbd5e1;
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .status {
+      margin-top: 15px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 15px;
+      }
+
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .search {
+        width: 100%;
+      }
+
+      input {
+        flex: 1;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <header>
+      <div>
+        <h1>🌤️ Weather Forecast</h1>
+        <div class="location" id="location">
+          Mumbai, India
+        </div>
+      </div>
+
+      <div class="search">
+        <input id="cityInput" placeholder="Enter city">
+        <button onclick="searchCity()">Search</button>
+      </div>
+    </header>
+
+    <section class="current">
+      <div class="current-temp" id="currentTemp">--°</div>
+      <div id="currentWeather">Loading weather...</div>
+      <div class="current-info" id="currentDetails"></div>
+      <div class="status" id="updated">Updating...</div>
+    </section>
+
+    <h2 class="section-title">Hourly Forecast</h2>
+
+    <div class="hourly-wrapper">
+      <div class="hourly" id="hourly">
+        <!-- Forecast cards inserted here -->
+      </div>
+    </div>
+
+  </div>
+
+<script>
+
+  // Default location: Mumbai
+  let latitude = 19.0760;
+  let longitude = 72.8777;
+  let cityName = "Mumbai, India";
+
+
+  // Weather-code descriptions
+  function weatherIcon(code) {
+
+    if (code === 0) return "☀️";
+    if (code === 1 || code === 2) return "🌤️";
+    if (code === 3) return "☁️";
+    if (code >= 45 && code <= 48) return "🌫️";
+    if (code >= 51 && code <= 57) return "🌦️";
+    if (code >= 61 && code <= 67) return "🌧️";
+    if (code >= 71 && code <= 77) return "❄️";
+    if (code >= 80 && code <= 82) return "🌦️";
+    if (code >= 85 && code <= 86) return "🌨️";
+    if (code >= 95) return "⛈️";
+
+    return "🌡️";
+  }
+
+
+  function weatherDescription(code) {
+
+    if (code === 0) return "Clear sky";
+    if (code === 1) return "Mainly clear";
+    if (code === 2) return "Partly cloudy";
+    if (code === 3) return "Cloudy";
+    if (code >= 45 && code <= 48) return "Foggy";
+    if (code >= 51 && code <= 57) return "Drizzle";
+    if (code >= 61 && code <= 67) return "Rain";
+    if (code >= 71 && code <= 77) return "Snow";
+    if (code >= 80 && code <= 82) return "Rain showers";
+    if (code >= 85 && code <= 86) return "Snow showers";
+    if (code >= 95) return "Thunderstorm";
+
+    return "Unknown";
+  }
+
+
+  async function loadWeather() {
+
+    const url =
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${latitude}` +
+      `&longitude=${longitude}` +
+      `&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m` +
+      `&current=temperature_2m,weather_code,wind_speed_10m` +
+      `&timezone=auto` +
+      `&forecast_days=2`;
+
+    try {
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const current = data.current;
+
+      // Current weather
+      document.getElementById("currentTemp").textContent =
+        Math.round(current.temperature_2m) + "°C";
+
+      document.getElementById("currentWeather").textContent =
+        weatherIcon(current.weather_code) +
+        " " +
+        weatherDescription(current.weather_code);
+
+      document.getElementById("currentDetails").textContent =
+        `Wind ${Math.round(current.wind_speed_10m)} km/h`;
+
+      document.getElementById("location").textContent =
+        cityName;
+
+      document.getElementById("updated").textContent =
+        "Live forecast • Updated " +
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+
+      // Hourly forecast
+      const hourlyContainer = document.getElementById("hourly");
+
+      hourlyContainer.innerHTML = "";
+
+      const times = data.hourly.time;
+      const temperatures = data.hourly.temperature_2m;
+      const rain = data.hourly.precipitation_probability;
+      const codes = data.hourly.weather_code;
+      const winds = data.hourly.wind_speed_10m;
+
+      // Find current hour
+      const currentHour = new Date().getHours();
+
+      let displayed = 0;
+
+      for (let i = 0; i < times.length && displayed < 24; i++) {
+
+        const date = new Date(times[i]);
+
+        // Only show upcoming/current hours
+        if (date.getTime() < Date.now() - 3600000) {
+          continue;
+        }
+
+        const card = document.createElement("div");
+
+        card.className = "hour";
+
+        if (displayed === 0) {
+          card.classList.add("now");
+        }
+
+        card.innerHTML = `
+          <div class="time">
+            ${displayed === 0 ? "Now" :
+              date.toLocaleTimeString([], {
+                hour: "numeric"
+              })}
+          </div>
+
+          <div class="icon">
+            ${weatherIcon(codes[i])}
+          </div>
+
+          <div class="temp">
+            ${Math.round(temperatures[i])}°C
+          </div>
+
+          <div class="rain">
+            💧 ${rain[i] ?? 0}%
+          </div>
+
+          <div class="wind">
+            💨 ${Math.round(winds[i])} km/h
+          </div>
+        `;
+
+        hourlyContainer.appendChild(card);
+
+        displayed++;
+      }
+
+    } catch (error) {
+
+      document.getElementById("currentWeather").textContent =
+        "Unable to load weather.";
+
+      console.error(error);
+    }
+  }
+
+
+  async function searchCity() {
+
+    const city = document.getElementById("cityInput").value.trim();
+
+    if (!city) return;
+
+    try {
+
+      // Geocoding API
+      const response = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+      );
+
+      const data = await response.json();
+
+      if (!data.results || data.results.length === 0) {
+        alert("City not found.");
+        return;
+      }
+
+      const result = data.results[0];
+
+      latitude = result.latitude;
+      longitude = result.longitude;
+
+      cityName =
+        `${result.name}, ${result.country}`;
+
+      loadWeather();
+
+    } catch (error) {
+
+      alert("Could not find the city.");
+
+      console.error(error);
+    }
+  }
+
+
+  // Initial load
+  loadWeather();
+
+  // Refresh every 10 minutes
+  setInterval(loadWeather, 10 * 60 * 1000);
+
+</script>
+
+</body>
+</html>
